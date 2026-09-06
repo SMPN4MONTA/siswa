@@ -1,0 +1,8 @@
+body { font-family: 'Plus Jakarta Sans', sans-serif; }
+.font-luxury { font-family: 'Cinzel', serif; }
+.pulse-gold { animation: pulse-gold-anim 2s infinite; }
+@keyframes pulse-gold-anim {
+    0% { box-shadow: 0 0 0 0px rgba(191, 149, 63, 0.4); }
+    100% { box-shadow: 0 0 0 15px rgba(191, 149, 63, 0); }
+}
+.active-scale:active { transform: scale(0.95); }

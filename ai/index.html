@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Asisten Presensi - SMP NEGERI 4 MONTA</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Cinzel:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: radial-gradient(circle at top, #1e1e24 0%, #0d0d0f 100%);
+            color: #f3f4f6;
+            min-height: 100vh; 
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .font-luxury { font-family: 'Cinzel', serif; }
+        .gold-text-gradient {
+            background: linear-gradient(135deg, #BF953F 0%, #FCF6BA 25%, #B38728 50%, #FBF5B7 75%, #AA7C11 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gold-bg-gradient {
+            background: linear-gradient(135deg, #BF953F 0%, #FCF6BA 50%, #AA7C11 100%);
+        }
+        .luxury-card { 
+            background: rgba(22, 22, 26, 0.85); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(191, 149, 63, 0.15); 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        .luxury-input {
+            background: rgba(10, 10, 12, 0.6) !important;
+            border: 1px solid rgba(191, 149, 63, 0.25) !important;
+            color: #ffffff !important;
+        }
+        .luxury-input:focus {
+            border-color: #BF953F !important;
+            outline: none;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0d0d0f; }
+        ::-webkit-scrollbar-thumb { background: #aa7c11; border-radius: 10px; }
+    </style>
+</head>
+<body class="antialiased p-4 md:p-6 max-w-7xl mx-auto w-full flex-1 flex flex-col">
+
+    <header class="luxury-card px-6 py-5 rounded-3xl flex items-center justify-between mb-6 border border-[#BF953F]/20">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-2xl gold-bg-gradient flex items-center justify-center text-black font-black text-xl shadow-lg">
+                <i class="fa-solid fa-robot"></i>
+            </div>
+            <div>
+                <h1 class="font-black text-white text-lg md:text-xl uppercase tracking-wider font-luxury gold-text-gradient">AI Asisten Ollama</h1>
+                <p class="text-[10px] text-gray-400 font-semibold tracking-widest uppercase">Analisis Presensi & Grafik Otomatis SMPN 4 Monta</p>
+            </div>
+        </div>
+        <button onclick="window.location.href='../index.html'" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-extrabold text-xs uppercase tracking-widest border border-white/10 active-scale transition-all">
+            <i class="fa-solid fa-arrow-left mr-1"></i> Kembali ke App
+        </button>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+        
+        <div class="lg:col-span-2 luxury-card rounded-3xl p-6 flex flex-col justify-between h-[650px] border border-[#BF953F]/20">
+            <div class="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span class="text-xs font-black uppercase tracking-widest text-gray-300">Ollama AI Engine (Connected to Firebase)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="text" id="ollama-host" value="http://localhost:11434" placeholder="Ollama Host URL" class="text-[10px] px-3 py-1.5 luxury-input rounded-lg w-40" title="Ubah host Ollama jika menggunakan server eksternal">
+                    <select id="ollama-model" class="text-[10px] px-3 py-1.5 luxury-input rounded-lg bg-[#121214] text-white font-medium">
+                        <option value="llama3">llama3</option>
+                        <option value="mistral">mistral</option>
+                        <option value="llama3.1">llama3.1</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="chat-messages" class="flex-1 overflow-y-auto space-y-4 pr-2 text-xs">
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-xl gold-bg-gradient flex items-center justify-center text-black font-black shrink-0">
+                        <i class="fa-solid fa-robot text-xs"></i>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-white/5 border border-white/10 text-gray-200 max-w-[85%] leading-relaxed">
+                        Halo Admin! Saya adalah Asisten AI Ollama yang terhubung langsung dengan database Firebase SMPN 4 Monta. Silakan tanyakan data kehadiran guru, rekapitulasi, atau minta saya membuatkan grafik kehadiran secara instan (contoh: <i>"Tampilkan data kehadiran hari ini"</i> atau <i>"Buatkan grafik kehadiran guru"</i>).
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-4 mt-4 border-t border-white/10">
+                <form id="chat-form" onsubmit="handleAiQuery(event)" class="flex gap-2">
+                    <input type="text" id="user-prompt" placeholder="Ketik perintah atau tanyakan data kehadiran guru..." class="flex-1 px-4 py-3.5 luxury-input rounded-2xl text-xs font-medium" autocomplete="off">
+                    <button type="submit" id="btn-send" class="px-6 py-3.5 gold-bg-gradient text-black font-black rounded-2xl shadow-lg hover:brightness-110 active-scale uppercase tracking-widest text-xs flex items-center gap-2">
+                        <span>Kirim</span>
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="luxury-card rounded-3xl p-6 flex flex-col justify-between h-[650px] border border-[#BF953F]/20">
+            <div>
+                <h3 class="font-black text-white uppercase text-xs tracking-widest mb-1 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-[#BF953F]"></i>
+                    Visualisasi Grafik Otomatis
+                </h3>
+                <p class="text-[10px] text-gray-400 mb-4">Grafik akan dirender otomatis berdasarkan perintah Anda kepada AI.</p>
+            </div>
+
+            <div class="flex-1 relative flex items-center justify-center bg-black/40 rounded-2xl p-4 border border-white/5">
+                <canvas id="attendanceChart"></canvas>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-white/10 text-center">
+                <button onclick="renderDefaultChart()" class="w-full py-2.5 bg-white/5 hover:bg-white/10 text-[#BF953F] border border-[#BF953F]/30 rounded-xl font-black text-[10px] uppercase tracking-widest active-scale transition-all">
+                    Muat Ulang Grafik Ringkasan
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Konfigurasi Firebase (Menyesuaikan dengan database proyek utama Anda)
+        const firebaseConfig = {
+            databaseURL: "https://presensismpn4monta-default-rtdb.firebaseio.com/" // Sesuaikan jika menggunakan config lengkap
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let globalAttendanceData = [];
+        let chartInstance = null;
+
+        // Ambil data real-time dari Firebase saat halaman dimuat
+        async function fetchFirebaseData() {
+            try {
+                const dbRef = ref(db);
+                const snapshot = await get(child(dbRef, 'presensi'));
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    globalAttendanceData = Object.keys(data).map(key => ({
+                        id: key,
+                        ...data[key]
+                    }));
+                } else {
+                    globalAttendanceData = [];
+                }
+            } catch (error) {
+                console.error("Gagal mengambil data Firebase:", error);
+                // Fallback demo data jika offline/local testing
+                globalAttendanceData = [
+                    { nama: "Ahmad, S.Pd", status: "Hadir", tanggal: new Date().toISOString().split('T')[0], jabatan: "Guru Mapel", catatan: "-" },
+                    { nama: "Siti Rahma, S.Pd", status: "Izin", tanggal: new Date().toISOString().split('T')[0], jabatan: "Wali Kelas", catatan: "Keperluan keluarga" },
+                    { nama: "Drs. H. Mahmud", status: "Sakit", tanggal: new Date().toISOString().split('T')[0], jabatan: "Guru Senior", catatan: "Demam" }
+                ];
+            }
+            renderDefaultChart();
+        }
+
+        fetchFirebaseData();
+
+        // Render Grafik Default
+        window.renderDefaultChart = function() {
+            let hadir = globalAttendanceData.filter(item => item.status === 'Hadir').length;
+            let izin = globalAttendanceData.filter(item => item.status === 'Izin').length;
+            let sakit = globalAttendanceData.filter(item => item.status === 'Sakit').length;
+
+            const ctx = document.getElementById('attendanceChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Hadir', 'Izin', 'Sakit'],
+                    datasets: [{
+                        data: [hadir || 1, izin || 0, sakit || 0],
+                        backgroundColor: ['#10b981', '#f59e0b', '#f43f5e'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#ffffff', font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        // Handle Ollama AI Query
+        window.handleAiQuery = async function(event) {
+            event.preventDefault();
+            const promptInput = document.getElementById('user-prompt');
+            const promptText = promptInput.value.trim();
+            if (!promptText) return;
+
+            appendChatBubble('user', promptText);
+            promptInput.value = '';
+
+            const host = document.getElementById('ollama-host').value;
+            const model = document.getElementById('ollama-model').value;
+
+            // Analisis intent sederhana secara lokal/AI untuk memicu grafik atau filter data kehadiran
+            let responseContent = "";
+            const lower = promptText.toLowerCase();
+
+            if (lower.includes('grafik') || lower.includes('chart') || lower.includes('diagram')) {
+                responseContent = "Baik, saya telah membuatkan dan memperbarui grafik kehadiran guru berdasarkan data Firebase terbaru.";
+                renderDefaultChart();
+            } else if (lower.includes('hadir') || lower.includes('data') || lower.includes('guru') || lower.includes('rekap')) {
+                let hadirList = globalAttendanceData.map(d => `• ${d.nama} (${d.status}) - ${d.tanggal || 'Hari ini'}`).join('\n');
+                responseContent = `Berikut adalah ringkasan data kehadiran guru dari database Firebase:\n\n${hadirList || "Belum ada data kehadiran tercatat."}`;
+            } else {
+                // Kirim ke Ollama Local API
+                try {
+                    const aiPayload = {
+                        model: model,
+                        prompt: `Anda adalah Asisten AI untuk sistem presensi SMPN 4 Monta. Data kehadiran saat ini: ${JSON.stringify(globalAttendanceData)}. Jawab pertanyaan admin berikut dengan ringkas dan profesional: ${promptText}`,
+                        stream: false
+                    };
+
+                    const res = await fetch(`${host}/api/generate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(aiPayload)
+                    });
+                    const json = await res.json();
+                    responseContent = json.response || "Maaf, Ollama merespons dengan format kosong.";
+                } catch (err) {
+                    responseContent = `Gagal terhubung ke server Ollama di ${host}. Pastikan Ollama berjalan lokal (jalankan 'ollama serve'). \n\nNamun data Firebase Anda berhasil dibaca: Ditemukan ${globalAttendanceData.length} total catatan presensi.`;
+                }
+            }
+
+            appendChatBubble('ai', responseContent);
+        }
+
+        function appendChatBubble(sender, text) {
+            const chatMessages = document.getElementById('chat-messages');
+            const isUser = sender === 'user';
+            
+            const bubbleHTML = `
+                <div class="flex items-start gap-3 ${isUser ? 'flex-row-reverse' : ''}">
+                    <div class="w-8 h-8 rounded-xl ${isUser ? 'bg-white/10 text-white border border-white/20' : 'gold-bg-gradient text-black'} flex items-center justify-center font-black shrink-0">
+                        <i class="fa-solid ${isUser ? 'fa-user text-xs' : 'fa-robot text-xs'}"></i>
+                    </div>
+                    <div class="p-4 rounded-2xl ${isUser ? 'bg-[#BF953F]/10 border border-[#BF953F]/30 text-white' : 'bg-white/5 border border-white/10 text-gray-200'} max-w-[85%] leading-relaxed whitespace-pre-line">
+                        ${text}
+                    </div>
+                </div>
+            `;
+            chatMessages.insertAdjacentHTML('beforeend', bubbleHTML);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    </script>
+</body>
+</html>

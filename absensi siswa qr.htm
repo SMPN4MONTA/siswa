@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMP NEGERI 4 MONTA - Presensi Siswa</title>
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Presensi Siswa">
+    <meta name="theme-color" content="#121214">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Cinzel:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Library Ekspor PDF, QRCode, HTML5QR, Excel, Word -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: radial-gradient(circle at top, #1e1e24 0%, #0d0d0f 100%);
+            color: #f3f4f6;
+            min-height: 100vh; 
+            margin: 0; 
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .font-luxury { font-family: 'Cinzel', serif; }
+        .gold-text-gradient {
+            background: linear-gradient(135deg, #BF953F 0%, #FCF6BA 25%, #B38728 50%, #FBF5B7 75%, #AA7C11 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gold-bg-gradient { background: linear-gradient(135deg, #BF953F 0%, #FCF6BA 50%, #AA7C11 100%); }
+        .gold-border-gradient {
+            border: 1px solid transparent;
+            background-image: linear-gradient(#121214, #121214), linear-gradient(135deg, #BF953F, #AA7C11);
+            background-origin: border-box;
+            background-clip: padding-box, border-box;
+        }
+        .luxury-card { 
+            background: rgba(22, 22, 26, 0.85); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(191, 149, 63, 0.15); 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        .pulse-gold { animation: pulse-gold-anim 2s infinite; }
+        @keyframes pulse-gold-anim {
+            0% { box-shadow: 0 0 0 0px rgba(191, 149, 63, 0.4); }
+            100% { box-shadow: 0 0 0 10px rgba(191, 149, 63, 0); }
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0d0d0f; }
+        ::-webkit-scrollbar-thumb { background: #aa7c11; border-radius: 10px; }
+        .luxury-input {
+            background: rgba(10, 10, 12, 0.6) !important;
+            border: 1px solid rgba(191, 149, 63, 0.25) !important;
+            color: #ffffff !important;
+            transition: all 0.3s ease;
+        }
+        .luxury-input:focus {
+            border-color: #BF953F !important;
+            box-shadow: 0 0 15px rgba(191, 149, 63, 0.2) !important;
+            outline: none;
+        }
+        .fade-in { animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .active-scale:active { transform: scale(0.96); transition: transform 0.1s ease; }
+        #printable-area { display: none; }
+        @media print {
+            body * { visibility: hidden !important; }
+            #printable-area, #printable-area * { visibility: visible !important; }
+            #printable-area { display: block !important; position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; background: #ffffff !important; color: #000000 !important; z-index: 999999 !important; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Auth Section -->
+    <div id="auth-section" class="fixed inset-0 flex items-center justify-center bg-[#0d0d0f] z-[500] px-4">
+        <div class="absolute w-[300px] h-[300px] bg-[#aa7c11]/10 rounded-full blur-[100px] top-1/4 left-1/4 pointer-events-none"></div>
+        <div class="absolute w-[350px] h-[350px] bg-[#BF953F]/10 rounded-full blur-[120px] bottom-1/4 right-1/4 pointer-events-none"></div>
+
+        <div class="luxury-card p-8 md:p-12 rounded-[2.5rem] w-full max-w-md text-center fade-in relative z-10 gold-border-gradient">
+            <div class="mb-8">
+                <div class="w-24 h-24 bg-gradient-to-b from-[#1c1c21] to-[#0d0d0f] rounded-3xl mx-auto flex items-center justify-center shadow-2xl mb-4 border border-[#BF953F]/30 overflow-hidden p-2 relative">
+                    <i class="fa-solid fa-user-graduate text-3xl gold-text-gradient"></i>
+                </div>
+                <h1 class="text-2xl font-extrabold font-luxury tracking-wider uppercase mt-4">
+                    <span class="gold-text-gradient">SMPN 4 MONTA</span>
+                </h1>
+                <p class="text-gray-400 mt-2 font-medium text-xs tracking-widest uppercase">Sistem Presensi Siswa</p>
+                <div class="w-24 h-[1px] bg-gradient-to-r from-transparent via-[#BF953F] to-transparent mx-auto mt-4"></div>
+            </div>
+
+            <div class="space-y-4 text-left">
+                <!-- Tombol Google Sign-In Tanpa Izin Admin (Langsung Masuk) -->
+                <button onclick="handleGoogleLogin()" id="btn-google-login" class="w-full bg-white hover:bg-gray-100 text-gray-900 font-bold py-3.5 px-4 rounded-2xl shadow-lg flex items-center justify-center gap-3 transition-all active-scale text-xs uppercase tracking-wider border border-gray-300">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                    </svg>
+                    <span>Masuk dengan Akun Google</span>
+                </button>
+
+                <div class="relative flex py-2 items-center">
+                    <div class="flex-grow border-t border-gray-700"></div>
+                    <span class="flex-shrink mx-3 text-[10px] text-gray-500 font-bold uppercase tracking-widest">atau manual</span>
+                    <div class="flex-grow border-t border-gray-700"></div>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-black text-[#BF953F] uppercase tracking-widest ml-1 mb-2 block">Nama Lengkap / NIS Siswa</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500">
+                            <i class="fa-solid fa-user"></i>
+                        </span>
+                        <input type="text" id="login-user" class="w-full pl-11 pr-4 py-4 luxury-input rounded-2xl font-medium" placeholder="Masukkan Nama Siswa">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-[#BF953F] uppercase tracking-widest ml-1 mb-2 block">Kelas (Contoh: VII A)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500">
+                            <i class="fa-solid fa-school"></i>
+                        </span>
+                        <input type="text" id="login-kelas" class="w-full pl-11 pr-4 py-4 luxury-input rounded-2xl font-medium" placeholder="Masukkan Kelas">
+                    </div>
+                </div>
+
+                <button onclick="handleLoginManual()" id="btn-login" class="w-full gold-bg-gradient text-black font-black py-4 rounded-2xl shadow-lg mt-4 active-scale hover:brightness-110 transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2">
+                    <span>Masuk Aplikasi Siswa</span>
+                    <i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Section -->
+    <div id="app-section" class="hidden p-3 md:p-6 max-w-7xl mx-auto relative z-10 flex-1 w-full">
+        
+        <div class="lg:hidden flex items-center justify-between luxury-card rounded-2xl px-5 py-4 mb-4 border border-[#BF953F]/30 shadow-lg">
+            <div class="flex items-center gap-3">
+                <div id="user-avatar-mobile" class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center border border-[#BF953F]/30 text-[#BF953F] bg-[#16161a]">
+                    <i class="fa-solid fa-user-graduate"></i>
+                </div>
+                <div>
+                    <h2 class="text-sm font-black font-luxury tracking-widest leading-none gold-text-gradient">SMPN 4 MONTA</h2>
+                    <span id="user-email-mobile" class="text-[8px] text-gray-400 font-bold uppercase tracking-widest block mt-1">Presensi Siswa</span>
+                </div>
+            </div>
+            <button onclick="handleLogout()" class="active-scale flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-400 font-extrabold text-[10px] uppercase tracking-widest transition-all">
+                <i class="fa-solid fa-power-off"></i>
+                <span>Keluar</span>
+            </button>
+        </div>
+
+        <div class="flex flex-col lg:flex-row gap-6 min-h-[90vh]">
+            
+            <!-- Sidebar -->
+            <aside id="admin-sidebar" class="hidden lg:flex flex-col w-72 luxury-card rounded-[2.5rem] p-8 text-white shadow-2xl border border-[#BF953F]/20 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-[#BF953F]/5 rounded-full blur-2xl pointer-events-none"></div>
+                
+                <div class="mb-10 text-center relative z-10">
+                    <div class="w-16 h-16 bg-gradient-to-b from-[#1c1c21] to-[#0d0d0f] rounded-2xl mx-auto flex items-center justify-center border border-[#BF953F]/30 p-1 mb-3 text-[#BF953F] text-2xl">
+                        <i class="fa-solid fa-user-graduate"></i>
+                    </div>
+                    <h2 class="text-lg font-black font-luxury tracking-widest leading-none gold-text-gradient uppercase">SMPN 4 MONTA</h2>
+                    <span class="text-[9px] text-[#BF953F] font-bold uppercase tracking-[0.2em] mt-2 block">Menu Siswa</span>
+                </div>
+
+                <nav class="space-y-3 flex-1 relative z-10">
+                    <button onclick="switchMode('siswa')" id="tab-siswa" class="w-full text-left px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-gradient-to-r from-[#BF953F] to-[#AA7C11] text-black shadow-lg transition-all flex items-center gap-3 active-scale">
+                        <i class="fa-solid fa-clipboard-user"></i>
+                        <span>Menu Absen Masuk & Pulang</span>
+                    </button>
+                    <button onclick="switchMode('monitor')" id="tab-monitor" class="w-full text-left px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/5 text-gray-400 hover:text-white transition-all flex items-center gap-3 border border-transparent hover:border-[#BF953F]/20 active-scale">
+                        <i class="fa-solid fa-tv"></i>
+                        <span>Rekap & Monitoring</span>
+                    </button>
+                </nav>
+
+                <div class="mt-auto pt-6 border-t border-[#BF953F]/10 space-y-2 relative z-10">
+                    <p class="text-[9px] font-black text-[#BF953F] uppercase tracking-widest mb-2">Unduh Rekap Laporan</p>
+                    <button onclick="exportToPDF()" class="w-full bg-[#BF953F]/10 hover:bg-[#BF953F]/20 text-[#BF953F] border border-[#BF953F]/30 font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 hover:brightness-110 active-scale transition-all uppercase tracking-widest">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span>Download PDF</span>
+                    </button>
+                    <button onclick="exportToExcel()" class="w-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 hover:brightness-110 active-scale transition-all uppercase tracking-widest">
+                        <i class="fa-solid fa-file-excel"></i>
+                        <span>Download Excel</span>
+                    </button>
+                    <button onclick="handleLogout()" class="w-full text-gray-500 font-bold text-xs hover:text-[#BF953F] flex items-center justify-center gap-2 transition-all py-2 pt-4">
+                        <i class="fa-solid fa-power-off text-rose-500"></i>
+                        <span>Keluar Akun</span>
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Main Display Area -->
+            <main class="flex-1 space-y-5">
+                
+                <header class="luxury-card px-6 py-5 md:px-8 md:py-6 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 border border-[#BF953F]/20">
+                    <div class="flex items-center gap-4 w-full sm:w-auto">
+                        <div id="user-avatar" class="w-14 h-14 rounded-2xl gold-bg-gradient flex items-center justify-center text-black font-black text-2xl shadow-lg relative shrink-0 overflow-hidden">
+                            ?
+                        </div>
+                        <div class="overflow-hidden">
+                            <h3 id="display-user" class="font-black text-white text-lg md:text-xl leading-none truncate uppercase tracking-wide">Memuat...</h3>
+                            <span id="display-kelas" class="text-[10px] text-[#BF953F] font-bold uppercase tracking-wider block mt-1">Kelas: -</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 border-white/5 pt-4 sm:pt-0">
+                        <div class="text-left sm:text-right">
+                            <p id="live-clock" class="text-2xl md:text-3xl font-black text-white tracking-widest leading-none font-luxury gold-text-gradient">00:00:00</p>
+                            <p id="live-date" class="text-[9px] text-[#BF953F] font-bold uppercase tracking-widest mt-2">...</p>
+                        </div>
+                        
+                        <div id="desktop-logout-container" class="hidden sm:block">
+                            <button onclick="handleLogout()" class="active-scale flex items-center gap-2 px-4 py-3 rounded-xl bg-rose-950/30 hover:bg-rose-900/40 border border-rose-500/30 text-rose-400 font-extrabold text-[11px] uppercase tracking-widest transition-all">
+                                <i class="fa-solid fa-power-off"></i>
+                                <span>Keluar</span>
+                            </button>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Section Dashboard Absen Siswa (Masuk & Pulang) -->
+                <div id="section-siswa" class="space-y-5 fade-in pb-10">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        
+                        <!-- Panel Absen Masuk -->
+                        <div class="luxury-card p-6 md:p-8 rounded-[2rem] shadow-2xl border border-emerald-500/30 flex flex-col justify-between">
+                            <div>
+                                <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl mb-4 border border-emerald-500/30">
+                                    <i class="fa-solid fa-right-to-bracket"></i>
+                                </div>
+                                <h3 class="text-lg font-black font-luxury text-white mb-2 uppercase tracking-wider">Absen Masuk Siswa</h3>
+                                <p class="text-xs text-gray-400 mb-6">Lakukan absensi kedatangan Anda saat tiba di sekolah hari ini.</p>
+                            </div>
+                            <button onclick="submitAbsen('Masuk')" class="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-3 active-scale transition-all uppercase tracking-widest text-xs">
+                                <i class="fa-solid fa-check-circle text-base"></i>
+                                <span>Kirim Absen Masuk</span>
+                            </button>
+                        </div>
+
+                        <!-- Panel Absen Pulang -->
+                        <div class="luxury-card p-6 md:p-8 rounded-[2rem] shadow-2xl border border-rose-500/30 flex flex-col justify-between">
+                            <div>
+                                <div class="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center text-xl mb-4 border border-rose-500/30">
+                                    <i class="fa-solid fa-right-from-bracket"></i>
+                                </div>
+                                <h3 class="text-lg font-black font-luxury text-white mb-2 uppercase tracking-wider">Absen Pulang Siswa</h3>
+                                <p class="text-xs text-gray-400 mb-6">Lakukan absensi kepulangan saat jam sekolah telah usai.</p>
+                            </div>
+                            <button onclick="submitAbsen('Pulang')" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-3 active-scale transition-all uppercase tracking-widest text-xs">
+                                <i class="fa-solid fa-person-walking-arrow-right text-base"></i>
+                                <span>Kirim Absen Pulang</span>
+                            </button>
+                        </div>
+
+                    </div>
+
+                    <!-- Riwayat Absen Siswa -->
+                    <div class="luxury-card p-6 md:p-8 rounded-[2rem] shadow-2xl flex flex-col border border-[#BF953F]/10">
+                        <h3 class="text-lg font-black font-luxury text-[#BF953F] mb-6 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left text-[#BF953F]"></i>
+                            <span class="gold-text-gradient">Riwayat Kehadiran Saya</span>
+                        </h3>
+                        <div id="siswa-history" class="space-y-3 overflow-y-auto max-h-[300px] flex-1">
+                            <p class="text-gray-500 text-xs italic py-10 text-center">Belum ada riwayat presensi.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Monitoring / Rekap Semua Siswa -->
+                <div id="section-monitor" class="hidden space-y-5 fade-in">
+                    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div class="luxury-card p-5 rounded-2xl border-l-4 border-l-emerald-500 border-y-transparent border-r-transparent">
+                            <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Total Masuk</p>
+                            <h4 id="stat-masuk" class="text-3xl font-black text-white">0</h4>
+                        </div>
+                        <div class="luxury-card p-5 rounded-2xl border-l-4 border-l-rose-500 border-y-transparent border-r-transparent">
+                            <p class="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Total Pulang</p>
+                            <h4 id="stat-pulang" class="text-3xl font-black text-white">0</h4>
+                        </div>
+                        <div class="luxury-card p-5 rounded-2xl border-l-4 border-l-[#BF953F] border-y-transparent border-r-transparent col-span-2 lg:col-span-1">
+                            <p class="text-[10px] font-black text-[#BF953F] uppercase tracking-widest mb-1">Total Absensi</p>
+                            <h4 id="stat-total" class="text-3xl font-black text-white">0</h4>
+                        </div>
+                    </div>
+
+                    <div class="luxury-card rounded-3xl overflow-hidden shadow-2xl">
+                        <div class="p-5 border-b border-white/5 flex flex-col sm:flex-row justify-between items-center px-6 gap-3 bg-white/2">
+                            <h4 class="font-black text-white flex items-center gap-2 uppercase text-xs tracking-widest">
+                                <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full pulse-gold"></span>
+                                Rekap Absensi Siswa Realtime
+                            </h4>
+                            <div class="flex items-center gap-2 w-full sm:w-auto">
+                                <div class="relative w-full sm:w-auto">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                                    </span>
+                                    <input type="text" id="search-monitor" oninput="filterMonitor()" placeholder="Cari nama siswa..." class="text-xs pl-8 pr-4 py-2 w-full sm:w-56 luxury-input rounded-xl">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-[#16161a] sticky top-0 text-[9px] font-black text-gray-400 uppercase tracking-widest border-b border-white/5 z-10">
+                                    <tr>
+                                        <th class="px-6 py-4">Waktu</th>
+                                        <th class="px-6 py-4">Nama Siswa</th>
+                                        <th class="px-6 py-4">Kelas</th>
+                                        <th class="px-6 py-4 text-center">Status</th>
+                                        <th class="px-6 py-4 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="monitor-table-body" class="divide-y divide-white/5 text-sm">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="w-full py-6 mt-10 border-t border-[#BF953F]/20 bg-[#0a0a0c]/90 text-center text-xs text-gray-400 relative z-20">
+        <div class="max-w-7xl mx-auto px-4 space-y-2">
+            <p class="font-extrabold font-luxury gold-text-gradient tracking-widest text-sm uppercase">PEMERINTAH KABUPATEN BIMA</p>
+            <p class="font-bold text-white text-xs uppercase tracking-wider">DINAS PENDIDIKAN, KEBUDAYAAN, PEMUDA DAN OLAHRAGA</p>
+            <p class="font-black text-[#BF953F] text-xs uppercase tracking-widest">SMP NEGERI 4 MONTA</p>
+            <p class="text-[10px] text-gray-400">Jl. Lintas-Tente-Parado, Desa Sakuru, Kec. Monta, Kab. Bima, Nusa Tenggara Barat (84161)</p>
+        </div>
+    </footer>
+
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 px-6 py-4 rounded-2xl text-white font-extrabold text-xs tracking-widest uppercase hidden z-[600] shadow-2xl flex items-center gap-3 transition-all duration-300 transform scale-95 border"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
+        import { 
+            getAuth, 
+            GoogleAuthProvider, 
+            signInWithPopup, 
+            signOut, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            getDocs, 
+            onSnapshot, 
+            serverTimestamp, 
+            deleteDoc, 
+            doc 
+        } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDkx_Mbj7NGJxs2Hw7nWpwsht7mlFeHdTo",
+            authDomain: "smp-negeri-4-monta.firebaseapp.com",
+            projectId: "smp-negeri-4-monta",
+            storageBucket: "smp-negeri-4-monta.firebasestorage.app",
+            messagingSenderId: "285302730423",
+            appId: "1:285302730423:web:9e5a4910837ba955cfa732",
+            measurementId: "G-1EL6R99LP0"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        const appId = 'presensi-siswa-v1';
+        const publicCollectionPath = ['artifacts', appId, 'public', 'data', 'absensi_siswa'];
+
+        let session = {
+            user: localStorage.getItem('siswa_user'),
+            kelas: localStorage.getItem('siswa_kelas'),
+            email: localStorage.getItem('siswa_email'),
+            photoURL: localStorage.getItem('siswa_photo')
+        };
+        let monitorData = [];
+
+        // Jam & Tanggal Realtime
+        setInterval(() => {
+            const now = new Date();
+            const clock = document.getElementById('live-clock');
+            const date = document.getElementById('live-date');
+            if(clock) clock.innerText = now.toLocaleTimeString('id-ID', { hour12: false });
+            if(date) date.innerText = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        }, 1000);
+
+        // Auto Login Check from LocalStorage
+        window.onload = () => {
+            if (session.user) {
+                showApp();
+            }
+        };
+
+        // Login Google Tanpa Izin Admin (Langsung Masuk)
+        window.handleGoogleLogin = async () => {
+            try {
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+                
+                session = {
+                    user: user.displayName || "Siswa",
+                    kelas: "VII A", // Default kelas, bisa diubah nanti
+                    email: user.email,
+                    photoURL: user.photoURL
+                };
+
+                localStorage.setItem('siswa_user', session.user);
+                localStorage.setItem('siswa_kelas', session.kelas);
+                localStorage.setItem('siswa_email', session.email);
+                if(user.photoURL) localStorage.setItem('siswa_photo', user.photoURL);
+
+                showToast("Login Google Berhasil!", "border-emerald-500/30 bg-emerald-950/90 text-emerald-400");
+                showApp();
+            } catch (error) {
+                console.error("Google login error:", error);
+                showToast("Login Google dibatalkan atau gagal.", "border-rose-500/30 bg-rose-950/90 text-rose-400");
+            }
+        };
+
+        // Login Manual Siswa
+        window.handleLoginManual = () => {
+            const nama = document.getElementById('login-user').value.trim();
+            const kelas = document.getElementById('login-kelas').value.trim();
+
+            if (!nama || !kelas) {
+                return showToast("Nama dan Kelas wajib diisi!", "border-rose-500/30 bg-rose-950/90 text-rose-400");
+            }
+
+            session = {
+                user: nama,
+                kelas: kelas,
+                email: "-",
+                photoURL: null
+            };
+
+            localStorage.setItem('siswa_user', session.user);
+            localStorage.setItem('siswa_kelas', session.kelas);
+            localStorage.setItem('siswa_email', session.email);
+
+            showToast(`Selamat Datang, ${nama}`, "border-emerald-500/30 bg-emerald-950/90 text-emerald-400");
+            showApp();
+        };
+
+        function showApp() {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('app-section').classList.remove('hidden');
+            
+            document.getElementById('display-user').innerText = session.user;
+            document.getElementById('display-kelas').innerText = `Kelas: ${session.kelas}`;
+
+            const avatarEl = document.getElementById('user-avatar');
+            if (session.photoURL) {
+                avatarEl.innerHTML = `<img src="${session.photoURL}" class="w-full h-full object-cover rounded-2xl" alt="Avatar"/>`;
+            } else {
+                avatarEl.innerText = (session.user ? session.user[0] : '?').toUpperCase();
+            }
+
+            switchMode('siswa');
+            listenRealtimeData();
+        }
+
+        window.switchMode = (mode) => {
+            ['siswa', 'monitor'].forEach(s => {
+                const el = document.getElementById(`section-${s}`);
+                if(el) el.classList.add('hidden');
+            });
+            const target = document.getElementById(`section-${mode}`);
+            if(target) target.classList.remove('hidden');
+
+            document.querySelectorAll('aside nav button').forEach(b => {
+                b.className = "w-full text-left px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/5 text-gray-400 hover:text-white transition-all flex items-center gap-3 border border-transparent hover:border-[#BF953F]/20 active-scale";
+            });
+            const activeBtn = document.getElementById(`tab-${mode}`);
+            if(activeBtn) activeBtn.className = "w-full text-left px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-gradient-to-r from-[#BF953F] to-[#AA7C11] text-black shadow-lg transition-all flex items-center gap-3 active-scale";
+        };
+
+        // Fungsi Absen Masuk & Pulang
+        window.submitAbsen = async (statusType) => {
+            const now = new Date();
+            const hariList = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const hariIni = hariList[now.getDay()];
+            const tanggalStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            const jamStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\./g, ':');
+            const fullWaktuStamp = `${hariIni}, ${tanggalStr} - Pukul ${jamStr}`;
+
+            try {
+                await addDoc(collection(db, ...publicCollectionPath), {
+                    nama: session.user,
+                    kelas: session.kelas,
+                    status: statusType, // "Masuk" atau "Pulang"
+                    waktu_lengkap: fullWaktuStamp,
+                    ts_raw: now.getTime(),
+                    created_at: serverTimestamp()
+                });
+
+                showToast(`Absen ${statusType} Berhasil Tercatat!`, "border-emerald-500/30 bg-emerald-950/90 text-emerald-400");
+            } catch (err) {
+                console.error(err);
+                showToast("Gagal mengirim absensi!", "border-rose-500/30 bg-rose-950/90 text-rose-400");
+            }
+        };
+
+        function listenRealtimeData() {
+            onSnapshot(collection(db, ...publicCollectionPath), (snap) => {
+                monitorData = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => b.ts_raw - a.ts_raw);
+                renderMonitorTable(monitorData);
+                renderSiswaHistory(monitorData);
+            });
+        }
+
+        function renderMonitorTable(data) {
+            const tbody = document.getElementById('monitor-table-body');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            let masuk = 0, pulang = 0;
+            
+            data.forEach(item => {
+                if(item.status === 'Masuk') masuk++;
+                if(item.status === 'Pulang') pulang++;
+                
+                tbody.innerHTML += `
+                    <tr class="hover:bg-white/[0.02] transition-colors border-b border-white/5">
+                        <td class="px-6 py-4 text-[11px] font-bold text-[#BF953F] font-mono">${item.waktu_lengkap || '-'}</td>
+                        <td class="px-6 py-4 font-black text-white uppercase text-xs tracking-wider">${item.nama}</td>
+                        <td class="px-6 py-4 text-xs font-semibold text-gray-300 uppercase">${item.kelas || '-'}</td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border ${item.status === 'Masuk' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-rose-500/30 bg-rose-500/10 text-rose-400'}">${item.status}</span>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <button onclick="deleteRecord('${item.id}')" class="text-rose-500 hover:text-white transition-all p-2 rounded-lg hover:bg-rose-950/50" title="Hapus">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+            
+            if(document.getElementById('stat-masuk')) document.getElementById('stat-masuk').innerText = masuk;
+            if(document.getElementById('stat-pulang')) document.getElementById('stat-pulang').innerText = pulang;
+            if(document.getElementById('stat-total')) document.getElementById('stat-total').innerText = data.length;
+        }
+
+        function renderSiswaHistory(data) {
+            const historyContainer = document.getElementById('siswa-history');
+            if(!historyContainer) return;
+            
+            const myData = data.filter(item => item.nama.toLowerCase() === session.user.toLowerCase());
+            if(myData.length === 0) {
+                historyContainer.innerHTML = '<p class="text-gray-500 text-xs italic py-10 text-center">Belum ada riwayat presensi.</p>';
+                return;
+            }
+
+            historyContainer.innerHTML = myData.map(item => `
+                <div class="p-4 border border-white/5 rounded-2xl bg-white/[0.01] flex justify-between items-center shadow-md">
+                    <div>
+                        <p class="text-[10px] font-black text-[#BF953F] uppercase tracking-widest mb-1">${item.waktu_lengkap}</p>
+                        <h4 class="font-black text-white uppercase text-xs tracking-wider">Absen ${item.status}</h4>
+                    </div>
+                    <span class="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${item.status === 'Masuk' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-rose-500/30 bg-rose-500/10 text-rose-400'}">${item.status}</span>
+                </div>
+            `).join('');
+        }
+
+        window.deleteRecord = async (id) => {
+            if(!confirm("Yakin ingin menghapus data ini?")) return;
+            try {
+                await deleteDoc(doc(db, ...publicCollectionPath, id));
+                showToast("Data Berhasil Dihapus", "border-rose-500/30 bg-rose-950/90 text-rose-400");
+            } catch (err) {
+                showToast("Gagal Menghapus Data!", "border-rose-500/30 bg-rose-950/90 text-rose-400");
+            }
+        };
+
+        window.handleLogout = async () => {
+            try { await signOut(auth); } catch(e){}
+            localStorage.clear();
+            location.reload();
+        };
+
+        function showToast(message, colorClass) {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.className = `fixed bottom-10 left-1/2 -translate-x-1/2 px-6 py-4 rounded-2xl text-white font-extrabold text-xs tracking-widest uppercase z-[600] shadow-2xl transition-all duration-300 border ${colorClass}`;
+            toast.classList.remove('hidden');
+            setTimeout(() => { toast.classList.add('hidden'); }, 3500);
+        }
+
+        // Export PDF
+        window.exportToPDF = () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(12);
+            doc.text("REKAP PRESENSI SISWA - SMP NEGERI 4 MONTA", 105, 15, { align: "center" });
+            
+            const rows = monitorData.map((item, idx) => [idx + 1, item.waktu_lengkap, item.nama, item.kelas || '-', item.status]);
+            doc.autoTable({ 
+                startY: 25, 
+                head: [['No', 'Waktu', 'Nama Siswa', 'Kelas', 'Status']], 
+                body: rows,
+                headStyles: { fillColor: [191, 149, 63] }
+            });
+            doc.save(`Rekap_Absensi_Siswa_SMPN4.pdf`);
+        };
+
+        // Export Excel
+        window.exportToExcel = () => {
+            const excelData = [
+                ["REKAP PRESENSI SISWA SMP NEGERI 4 MONTA"],
+                ["No", "Waktu", "Nama Siswa", "Kelas", "Status"]
+            ];
+            monitorData.forEach((item, index) => {
+                excelData.push([index + 1, item.waktu_lengkap, item.nama, item.kelas || '-', item.status]);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(excelData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Rekap Absen");
+            XLSX.writeFile(wb, "Rekap_Absensi_Siswa_SMPN4.xlsx");
+            showToast("Excel Berhasil Diunduh", "border-emerald-500/30 bg-emerald-950/90 text-emerald-400");
+        };
+
+        window.filterMonitor = () => {
+            const val = document.getElementById('search-monitor').value.toLowerCase();
+            const filtered = monitorData.filter(item => item.nama.toLowerCase().includes(val));
+            renderMonitorTable(filtered);
+        };
+    </script>
+</body>
+</html>

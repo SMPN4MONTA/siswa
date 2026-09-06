@@ -1,17 +1,37 @@
 <?php
 header('Content-Type: application/json');
-require_once '../../db_connection.php'; // Menggunakan database yang sama dengan aplikasi utama
+
+// Konfigurasi Firebase Anda (Sesuaikan URL Realtime Database Anda)
+$firebaseUrl = "https://YOUR-PROJECT-ID-default-rtdb.firebaseio.com";
+
+// Fungsi helper untuk mengambil data dari Firebase via cURL
+function fetchFirebaseData($url) {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($httpCode !== 200) return null;
+    return json_decode($response, true);
+}
 
 $input = json_decode(file_get_contents('php://input'), true);
 
+// 1. Ambil data matrix real-time jika diminta via parameter URL ?matrix=1
 if (isset($_GET['matrix'])) {
-    // Ambil data matrix real-time
-    $stmt = $pdo->query("SELECT status, COUNT(*) as total FROM absensi GROUP BY status");
+    $data = fetchFirebaseData($firebaseUrl . "/absensi.json");
     $counts = ['hadir' => 0, 'terlambat' => 0, 'tidak_hadir' => 0];
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        if (strtolower($row['status']) == 'hadir') $counts['hadir'] = $row['total'];
-        if (strtolower($row['status']) == 'terlambat') $counts['terlambat'] = $row['total'];
-        if (in_array(strtolower($row['status']), ['izin', 'sakit', 'alpa'])) $counts['tidak_hadir'] += $row['total'];
+    
+    if (!empty($data) && is_array($data)) {
+        foreach ($data as $row) {
+            $status = isset($row['status']) ? strtolower($row['status']) : '';
+            if ($status == 'hadir') $counts['hadir']++;
+            elseif ($status == 'terlambat') $counts['terlambat']++;
+            elseif (in_array($status, ['izin', 'sakit', 'alpa'])) $counts['tidak_hadir']++;
+        }
     }
     echo json_encode(['matrix' => $counts]);
     exit;
@@ -19,11 +39,15 @@ if (isset($_GET['matrix'])) {
 
 $prompt = $input['prompt'] ?? '';
 
-// 1. Ambil konteks database untuk diberikan ke Gemma 3 4B via Ollama
-$stmt = $pdo->query("SELECT * FROM absensi ORDER BY id DESC LIMIT 50");
-$attendanceData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// 2. Ambil konteks data kehadiran dari Firebase untuk diberikan ke Gemma 2 2B
+$allData = fetchFirebaseData($firebaseUrl . "/absensi.json");
+$attendanceData = [];
+if (!empty($allData) && is_array($allData)) {
+    // Batasi 50 data terakhir
+    $attendanceData = array_slice(array_reverse($allData), 0, 50);
+}
 
-// 2. Format prompt untuk Ollama API (Lokal Endpoint: http://localhost:11434)
+// 3. Format payload untuk Ollama API lokal (Menggunakan gemma2:2b)
 $ollamaPayload = [
     "model" => "gemma2:2b",
     "messages" => [
@@ -50,16 +74,18 @@ curl_close($ch);
 $ollamaResponse = json_decode($result, true);
 $aiAnswer = $ollamaResponse['message']['content'] ?? "Maaf, AI lokal belum memberikan respons.";
 
-// Hitung data matrix terbaru untuk dikirim ke UI
-$stmtM = $pdo->query("SELECT status, COUNT(*) as total FROM absensi GROUP BY status");
+// 4. Hitung ulang data matrix terbaru dari Firebase untuk dikirim ke UI
 $counts = ['hadir' => 0, 'terlambat' => 0, 'tidak_hadir' => 0];
-while ($row = $stmtM->fetch(PDO::FETCH_ASSOC)) {
-    if (strtolower($row['status']) == 'hadir') $counts['hadir'] = $row['total'];
-    if (strtolower($row['status']) == 'terlambat') $counts['terlambat'] = $row['total'];
-    if (in_array(strtolower($row['status']), ['izin', 'sakit', 'alpa'])) $counts['tidak_hadir'] += $row['total'];
+if (!empty($allData) && is_array($allData)) {
+    foreach ($allData as $row) {
+        $status = isset($row['status']) ? strtolower($row['status']) : '';
+        if ($status == 'hadir') $counts['hadir']++;
+        elseif ($status == 'terlambat') $counts['terlambat']++;
+        elseif (in_array($status, ['izin', 'sakit', 'alpa'])) $counts['tidak_hadir']++;
+    }
 }
 
-// Cek apakah user meminta diagram/grafik
+// 5. Cek apakah user meminta diagram/grafik
 $chartData = null;
 if (stripos($prompt, 'diagram') !== false || stripos($prompt, 'grafik') !== false) {
     $chartData = [
